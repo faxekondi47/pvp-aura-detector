@@ -1,0 +1,8 @@
+## Interface: 20505
+## Title: PVP Aura Detector
+## Notes: Detects PVP flag mismatches in dungeon parties that prevent group-wide buffs from working correctly.
+## Author: mig
+## Version: 1.0.0
+## SavedVariables: PVPAuraDetectorDB
+
+PVPAuraDetector.lua
