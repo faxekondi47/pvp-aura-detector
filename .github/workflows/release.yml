@@ -48,7 +48,7 @@ jobs:
           METADATA=$(jq -nc \
             --arg changelog "$CHANGELOG" \
             --arg displayName "PVPAuraDetector $VERSION" \
-            '{changelog: {markup: "text", changelogText: $changelog}, displayName: $displayName, gameVersions: [14300], releaseType: "release"}')
+            '{changelog: $changelog, changelogType: "text", displayName: $displayName, gameVersions: [14300], releaseType: "release"}')
 
           HTTP_STATUS=$(curl -s -o response.txt -w "%{http_code}" \
             -X POST "https://wow.curseforge.com/api/projects/1477285/upload-file" \
