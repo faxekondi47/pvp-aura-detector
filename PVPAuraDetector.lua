@@ -4,7 +4,8 @@ PVPAuraDetectorDB = PVPAuraDetectorDB or {}
 
 -- State variables
 local isMonitoring = false
-local lastReportedState = nil
+local lastKnownState = nil
+local reportCooldownExpiry = 0
 local debounceTimer = nil
 local pollingTicker = nil
 
@@ -76,12 +77,15 @@ local function PerformCheck()
 
     if isMismatch then
         local snapshot = BuildStateSnapshot(flags)
-        if snapshot ~= lastReportedState then
-            ReportMismatch(pvpOffNames)
-            lastReportedState = snapshot
+        if snapshot ~= lastKnownState then
+            lastKnownState = snapshot
+            if GetTime() >= reportCooldownExpiry then
+                ReportMismatch(pvpOffNames)
+                reportCooldownExpiry = GetTime() + 60
+            end
         end
     else
-        lastReportedState = nil
+        lastKnownState = nil
     end
 end
 
@@ -132,7 +136,7 @@ local function EvaluateMonitoring()
         if isMonitoring then
             isMonitoring = false
             StopPolling()
-            lastReportedState = nil
+            lastKnownState = nil
             if debounceTimer then
                 debounceTimer:Cancel()
                 debounceTimer = nil

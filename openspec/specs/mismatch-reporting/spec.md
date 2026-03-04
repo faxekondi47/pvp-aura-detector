@@ -12,23 +12,23 @@ When a PVP flag mismatch is detected, the addon SHALL send a message to party ch
 - **THEN** the addon SHALL NOT send any message
 
 ### Requirement: State-based report suppression
-The addon SHALL track the last reported mismatch state as a snapshot of party member PVP flags. The addon SHALL only send a new report when the current mismatch state differs from the last reported state.
+The addon SHALL track the last known mismatch state as a snapshot of party member PVP flags. The addon SHALL always update this tracked state when a mismatch change is detected, regardless of whether a report is sent. The addon SHALL only send a new report when the current mismatch state differs from the last known state and the report cooldown has expired.
 
 #### Scenario: Same mismatch persists across checks
-- **WHEN** a flag check detects a mismatch identical to the previously reported mismatch
+- **WHEN** a flag check detects a mismatch identical to the last known mismatch state
 - **THEN** the addon SHALL NOT send a message
 
 #### Scenario: Mismatch resolved then re-occurs
-- **WHEN** a previously reported mismatch is resolved (all flags match), and then a new mismatch occurs with the same players
-- **THEN** the addon SHALL report the mismatch again because the last reported state was cleared when the mismatch resolved
+- **WHEN** a previously known mismatch is resolved (all flags match), and then a new mismatch occurs with the same players
+- **THEN** the addon SHALL report the mismatch again (if cooldown has expired) because the last known state was cleared when the mismatch resolved
 
 #### Scenario: New mismatch after previous mismatch
-- **WHEN** a mismatch is reported, and then a different mismatch occurs (different set of players)
-- **THEN** the addon SHALL report the new mismatch
+- **WHEN** a mismatch is known, and then a different mismatch occurs (different set of players)
+- **THEN** the addon SHALL update the last known state, and report the new mismatch only if the cooldown has expired
 
 #### Scenario: State cleared on dungeon exit
 - **WHEN** the player leaves the dungeon
-- **THEN** the last reported mismatch state SHALL be cleared
+- **THEN** the last known mismatch state SHALL be cleared
 
 ### Requirement: Message always suggests enabling PVP
 The mismatch report SHALL always list the players who do NOT have PVP enabled and ask them to enable it. The addon SHALL NOT suggest disabling PVP for flagged players, regardless of majority.
