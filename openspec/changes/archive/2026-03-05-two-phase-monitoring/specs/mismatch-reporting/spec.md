@@ -1,15 +1,4 @@
-## ADDED Requirements
-
-### Requirement: Report mismatch to party chat
-When a PVP flag mismatch is detected, the addon SHALL send a message to party chat identifying which players do not have PVP enabled and instructing them to type /pvp. The message SHALL indicate that group-wide buffs may not work correctly.
-
-#### Scenario: Mismatch with some players PVP-off
-- **WHEN** a flag check finds players with PVP enabled and players without PVP enabled
-- **THEN** the addon SHALL send a party chat message listing the names of players without PVP, stating that group-wide buffs may not work correctly, and instructing them to type /pvp
-
-#### Scenario: All players have same flag state
-- **WHEN** a flag check finds all party members have the same PVP flag state (all on or all off)
-- **THEN** the addon SHALL NOT send any message
+## MODIFIED Requirements
 
 ### Requirement: State-based report suppression
 The addon SHALL track the last known mismatch state as a snapshot of party member PVP flags. The addon SHALL only send a new report when the current mismatch state differs from the last known state. When returning to Phase 1 due to a member leaving the instance, `lastKnownState` SHALL be preserved. When returning to Phase 1 due to group composition change, `lastKnownState` SHALL be cleared.
@@ -37,14 +26,3 @@ The addon SHALL track the last known mismatch state as a snapshot of party membe
 #### Scenario: State cleared on group composition change
 - **WHEN** GROUP_ROSTER_UPDATE fires in Phase 2
 - **THEN** the last known mismatch state SHALL be cleared
-
-### Requirement: Message always suggests enabling PVP
-The mismatch report SHALL always list the players who do NOT have PVP enabled and ask them to enable it. The addon SHALL NOT suggest disabling PVP for flagged players, regardless of majority.
-
-#### Scenario: Majority has PVP off
-- **WHEN** 4 players have PVP off and 1 has PVP on
-- **THEN** the addon SHALL list the 4 PVP-off players and ask them to /pvp
-
-#### Scenario: Majority has PVP on
-- **WHEN** 4 players have PVP on and 1 has PVP off
-- **THEN** the addon SHALL list the 1 PVP-off player and ask them to /pvp

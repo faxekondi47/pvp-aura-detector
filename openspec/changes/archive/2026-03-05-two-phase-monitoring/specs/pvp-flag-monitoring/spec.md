@@ -1,23 +1,4 @@
-## ADDED Requirements
-
-### Requirement: Addon activates only inside dungeon instances while in a party
-The addon SHALL only perform PVP flag monitoring when the player is inside a dungeon instance AND is in a party group. The addon SHALL stop monitoring when leaving the dungeon or leaving the party.
-
-#### Scenario: Player enters dungeon while in party
-- **WHEN** the player zones into a dungeon instance while in a party
-- **THEN** the addon SHALL begin monitoring PVP flag status of all party members
-
-#### Scenario: Player leaves dungeon
-- **WHEN** the player zones out of a dungeon instance
-- **THEN** the addon SHALL stop monitoring and clear all tracked state
-
-#### Scenario: Player leaves party while in dungeon
-- **WHEN** the player leaves their party while inside a dungeon
-- **THEN** the addon SHALL stop monitoring and clear all tracked state
-
-#### Scenario: Player is in dungeon but not in a party
-- **WHEN** the player is inside a dungeon instance but not in a party
-- **THEN** the addon SHALL NOT perform any monitoring
+## MODIFIED Requirements
 
 ### Requirement: Event-driven PVP flag detection
 The addon SHALL listen for ZONE_CHANGED_NEW_AREA, GROUP_ROSTER_UPDATE, and UNIT_FLAGS events. Event handling behavior SHALL depend on the current monitoring phase. In Phase 1, events SHALL trigger monitoring evaluation but PVP flag checks are performed only by the polling ticker. In Phase 2, UNIT_FLAGS SHALL trigger a guarded PVP flag check and GROUP_ROSTER_UPDATE SHALL return to Phase 1.
@@ -53,13 +34,11 @@ The addon SHALL run a periodic timer (every 10 seconds) only during Phase 1 to c
 - **WHEN** monitoring becomes inactive (left dungeon or left party)
 - **THEN** the periodic timer SHALL be cancelled
 
-### Requirement: Manual check via slash command
-The addon SHALL register a `/pvpcheck` slash command that performs an immediate PVP flag check and reports results regardless of monitoring state or previous report history.
+### Requirement: Check all party members regardless of location
+**This requirement is removed. See report-cooldown specs for removal notice.**
 
-#### Scenario: Manual check inside dungeon with mismatch
-- **WHEN** the player types `/pvpcheck` while inside a dungeon with a PVP flag mismatch
-- **THEN** the addon SHALL report the mismatch to party chat even if it was previously reported
+## REMOVED Requirements
 
-#### Scenario: Manual check outside dungeon
-- **WHEN** the player types `/pvpcheck` while not inside a dungeon
-- **THEN** the addon SHALL print a local message indicating the command only works in dungeons
+### Requirement: Check all party members regardless of location
+**Reason**: Replaced by instance-presence-verification capability. Party members are now filtered by map ID before PVP flag checking.
+**Migration**: PVP flag checks now only include party members verified to be on the same map as the local player.

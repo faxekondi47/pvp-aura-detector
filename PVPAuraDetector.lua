@@ -3,16 +3,34 @@ local addonName, ns = ...
 PVPAuraDetectorDB = PVPAuraDetectorDB or {}
 
 -- State variables
-local isMonitoring = false
+local monitoringPhase = nil -- nil (inactive), 1 (gathering), 2 (event-driven)
 local lastKnownState = nil
-local reportCooldownExpiry = 0
-local debounceTimer = nil
 local pollingTicker = nil
 
 -- Frame for event registration
 local frame = CreateFrame("Frame")
 
 local PARTY_UNITS = {"player", "party1", "party2", "party3", "party4"}
+
+---------------------------------------------------------------------------
+-- Instance Presence Verification
+---------------------------------------------------------------------------
+
+local function AreAllMembersInInstance()
+    local playerMapID = C_Map.GetBestMapForUnit("player")
+    if not playerMapID then return false end
+
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if UnitExists(unit) then
+            local memberMapID = C_Map.GetBestMapForUnit(unit)
+            if not memberMapID or memberMapID ~= playerMapID then
+                return false
+            end
+        end
+    end
+    return true
+end
 
 ---------------------------------------------------------------------------
 -- PVP Flag Checking
@@ -79,10 +97,7 @@ local function PerformCheck()
         local snapshot = BuildStateSnapshot(flags)
         if snapshot ~= lastKnownState then
             lastKnownState = snapshot
-            if GetTime() >= reportCooldownExpiry then
-                ReportMismatch(pvpOffNames)
-                reportCooldownExpiry = GetTime() + 60
-            end
+            ReportMismatch(pvpOffNames)
         end
     else
         lastKnownState = nil
@@ -90,26 +105,8 @@ local function PerformCheck()
 end
 
 ---------------------------------------------------------------------------
--- Debounce and Polling
+-- Polling
 ---------------------------------------------------------------------------
-
-local function ScheduleDebouncedCheck()
-    if debounceTimer then
-        debounceTimer:Cancel()
-        debounceTimer = nil
-    end
-    debounceTimer = C_Timer.NewTimer(2, function()
-        debounceTimer = nil
-        PerformCheck()
-    end)
-end
-
-local function StartPolling()
-    if pollingTicker then return end
-    pollingTicker = C_Timer.NewTicker(10, function()
-        PerformCheck()
-    end)
-end
 
 local function StopPolling()
     if pollingTicker then
@@ -118,31 +115,70 @@ local function StopPolling()
     end
 end
 
+local function StartPolling()
+    if pollingTicker then return end
+    pollingTicker = C_Timer.NewTicker(10, function()
+        if monitoringPhase ~= 1 then return end
+        if not AreAllMembersInInstance() then return end
+
+        PerformCheck()
+
+        -- All members verified inside, transition to Phase 2
+        StopPolling()
+        monitoringPhase = 2
+    end)
+end
+
 ---------------------------------------------------------------------------
 -- Activation / Deactivation
 ---------------------------------------------------------------------------
+
+local function EnterPhase1()
+    monitoringPhase = 1
+    StartPolling()
+end
+
+local function StopMonitoring()
+    monitoringPhase = nil
+    StopPolling()
+    lastKnownState = nil
+end
 
 local function EvaluateMonitoring()
     local inInstance = IsInInstance()
     local inGroup = IsInGroup()
 
     if inInstance and inGroup then
-        if not isMonitoring then
-            isMonitoring = true
-            StartPolling()
-            ScheduleDebouncedCheck()
+        if not monitoringPhase then
+            EnterPhase1()
         end
     else
-        if isMonitoring then
-            isMonitoring = false
-            StopPolling()
-            lastKnownState = nil
-            if debounceTimer then
-                debounceTimer:Cancel()
-                debounceTimer = nil
-            end
+        if monitoringPhase then
+            StopMonitoring()
         end
     end
+end
+
+---------------------------------------------------------------------------
+-- Phase 2 Handlers
+---------------------------------------------------------------------------
+
+local function HandlePhase2UnitFlags()
+    if not AreAllMembersInInstance() then
+        -- Member outside: return to Phase 1, preserve lastKnownState
+        monitoringPhase = 1
+        StartPolling()
+        return
+    end
+
+    PerformCheck()
+end
+
+local function HandlePhase2RosterUpdate()
+    -- Group composition changed: return to Phase 1, clear state
+    lastKnownState = nil
+    monitoringPhase = 1
+    StartPolling()
 end
 
 ---------------------------------------------------------------------------
@@ -150,14 +186,17 @@ end
 ---------------------------------------------------------------------------
 
 frame:SetScript("OnEvent", function(self, event, ...)
-    if event == "ZONE_CHANGED_NEW_AREA" or event == "GROUP_ROSTER_UPDATE" then
+    if event == "ZONE_CHANGED_NEW_AREA" then
         EvaluateMonitoring()
-        if isMonitoring then
-            ScheduleDebouncedCheck()
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        if monitoringPhase == 2 then
+            HandlePhase2RosterUpdate()
+        else
+            EvaluateMonitoring()
         end
     elseif event == "UNIT_FLAGS" then
-        if isMonitoring then
-            ScheduleDebouncedCheck()
+        if monitoringPhase == 2 then
+            HandlePhase2UnitFlags()
         end
     end
 end)
